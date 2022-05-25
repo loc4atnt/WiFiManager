@@ -437,6 +437,8 @@ class WiFiManager
     // get hostname helper
     String        getWiFiHostname();
 
+    bool          isConfigPortalActive();
+
 #ifdef MULTI_AP
     uint8_t checkConnectForAPSet(bool isHasInternet = true);
 

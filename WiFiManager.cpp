@@ -928,11 +928,16 @@ bool WiFiManager::shutdownConfigPortal(){
   DEBUG_WM(DEBUG_VERBOSE,F("shutdownConfigPortal"));
   #endif
 
+  DEBUG_WM(F("CHECK SERVER PORTAL != NULL:"));
+  DEBUG_WM(server!=nullptr);
+
   if(webPortalActive) return false;
 
   if(configPortalActive){
     //DNS handler
     dnsServer->processNextRequest();
+  }else{// portal is not active
+    // return false;
   }
 
   //HTTP handler
@@ -1922,6 +1927,9 @@ void WiFiManager::handleInfo() {
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(DEBUG_VERBOSE,F("<- HTTP Info"));
   #endif
+  DEBUG_WM(F("Turn off Watchdog"));
+  disableLoopWDT();
+
   handleRequest();
   String page = getHTTPHead(FPSTR(S_titleinfo)); // @token titleinfo
   reportStatus(page);
@@ -2011,6 +2019,9 @@ void WiFiManager::handleInfo() {
   if(_showBack) page += FPSTR(HTTP_BACKBTN);
   page += FPSTR(HTTP_HELP);
   page += FPSTR(HTTP_END);
+
+  DEBUG_WM(F("Turn on Watchdog"));
+  enableLoopWDT();
 
   HTTPSend(page);
 
@@ -3902,6 +3913,10 @@ void WiFiManager::storageAPSet(){
   DEBUG_WM("storage md5OfJSON:");
   DEBUG_WM(md5OfJSON);
   #endif
+}
+
+bool WiFiManager::isConfigPortalActive(){
+  return configPortalActive;
 }
 
 uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet){
