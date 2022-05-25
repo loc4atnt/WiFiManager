@@ -352,6 +352,15 @@ boolean WiFiManager::autoConnect(char const *apName, char const *apPassword) {
     return false; // not connected and not cp
   }
 
+  // skip the config portal because APSet has some AP.
+  if (this->apSet.getAPAmount()>0) {
+    #ifdef WM_DEBUG_LEVEL
+    DEBUG_WM(F("enableConfigPortal: FALSE, skipping because APSet has some AP"));
+    #endif
+
+    return false; // not connected and not cp
+  }
+
   // not connected start configportal
   bool res = startConfigPortal(apName, apPassword);
   return res;
@@ -687,7 +696,7 @@ boolean  WiFiManager::startConfigPortal(char const *apName, char const *apPasswo
     WiFi_Disconnect();
     WiFi_enableSTA(false);
     #ifdef WM_DEBUG_LEVEL
-    DEBUG_WM(DEBUG_VERBOSE,F("Disabling STA"));
+    DEBUG_WM(F("Disabling STA"));
     #endif
   }
   else {
@@ -822,9 +831,11 @@ uint8_t WiFiManager::processConfigPortal(){
     // Waiting for save...
     if(connect) {
       connect = false;
+
       #ifdef WM_DEBUG_LEVEL
       DEBUG_WM(DEBUG_VERBOSE,F("processing save"));
       #endif
+
       if(_enableCaptivePortal) delay(_cpclosedelay); // keeps the captiveportal from closing to fast.
 
       // skip wifi if no ssid
@@ -849,6 +860,7 @@ uint8_t WiFiManager::processConfigPortal(){
 
 #ifdef MULTI_AP
           feedWdt(1);
+          yield(); // watchdog
           // Restart APSet process
           this->apSet.restartProcess();
           this->apSet.setAP(_ssid, _pass);
@@ -992,6 +1004,7 @@ uint8_t WiFiManager::connectWifi(String ssid, String pass, bool connect) {
 
   while(retry <= _connectRetries && (connRes!=WL_CONNECTED)){
     feedWdt(1);
+    yield(); // watchdog
   if(_connectRetries > 1){
     if(_aggresiveReconn) delay(1000); // add idle time before recon
     #ifdef WM_DEBUG_LEVEL
@@ -1188,12 +1201,19 @@ uint8_t WiFiManager::waitForConnectResult(uint32_t timeout) {
     #ifdef WM_DEBUG_LEVEL
     DEBUG_WM(F("connectTimeout not set, ESP waitForConnectResult..."));
     #endif
-    return WiFi.waitForConnectResult();
+    // Turn off watchdog
+    DEBUG_WM(F("turn off watchdog"));
+    disableLoopWDT();
+    uint8_t waitRes = WiFi.waitForConnectResult();
+    // Turn on watchdog
+    DEBUG_WM(F("turn on watchdog"));
+    enableLoopWDT();
+    return waitRes;
   }
 
   unsigned long timeoutmillis = millis() + timeout;
   #ifdef WM_DEBUG_LEVEL
-  DEBUG_WM(DEBUG_VERBOSE,timeout,F("ms timeout, waiting for connect..."));
+  DEBUG_WM(timeout,F("ms timeout, waiting for connect..."));
   #endif
   uint8_t status = WiFi.status();
   
@@ -1204,9 +1224,11 @@ uint8_t WiFiManager::waitForConnectResult(uint32_t timeout) {
       return status;
     }
     #ifdef WM_DEBUG_LEVEL
-    DEBUG_WM (DEBUG_VERBOSE,F("."));
+    DEBUG_WM (F("."));
     #endif
     delay(100);
+    feedWdt(1);
+    yield(); // watchdog
   }
   return status;
 }
@@ -3883,18 +3905,20 @@ void WiFiManager::storageAPSet(){
 }
 
 uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet){
-  uint8_t job = apSet.getStatus();
-  if (WiFi.status() != WL_CONNECTED || (!isHasInternet)) {
-    if (job == APSET_WAITING_CONNECTION_TO_DEFAULT_AP){
-      if (apSet.hasSSID(WiFi_SSID())) wifiConnectDefault();
-    }else if (job == APSET_READY_TO_CONNECT_NEXT_AP){
-      APCredential cre;
-      if (apSet.getCurConnAP(cre)) {
-        if (WiFi_SSID() != cre.getSSID()) connectWifi(cre.getSSID(), cre.getPass());
-      }
-    }// else = waiting time out
+  if (!configPortalActive){
+    uint8_t job = apSet.getStatus();
+    if (WiFi.status() != WL_CONNECTED || (!isHasInternet)) {
+      if (job == APSET_WAITING_CONNECTION_TO_DEFAULT_AP){
+        if (apSet.hasSSID(WiFi_SSID())) wifiConnectDefault();
+      }else if (job == APSET_READY_TO_CONNECT_NEXT_AP){
+        APCredential cre;
+        if (apSet.getCurConnAP(cre)) {
+          if (WiFi_SSID() != cre.getSSID()) connectWifi(cre.getSSID(), cre.getPass());
+        }
+      }// else = waiting time out
+    }
+    this->apSet.process(job);
   }
-  this->apSet.process(job);
   return WiFi.status();
 }
 
