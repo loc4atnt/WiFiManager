@@ -3919,24 +3919,6 @@ bool WiFiManager::isConfigPortalActive(){
   return configPortalActive;
 }
 
-uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet){
-  if (!configPortalActive){
-    uint8_t job = apSet.getStatus();
-    if (WiFi.status() != WL_CONNECTED || (!isHasInternet)) {
-      if (job == APSET_WAITING_CONNECTION_TO_DEFAULT_AP){
-        if (apSet.hasSSID(WiFi_SSID())) wifiConnectDefault();
-      }else if (job == APSET_READY_TO_CONNECT_NEXT_AP){
-        APCredential cre;
-        if (apSet.getCurConnAP(cre)) {
-          if (WiFi_SSID() != cre.getSSID()) connectWifi(cre.getSSID(), cre.getPass());
-        }
-      }// else = waiting time out
-    }
-    this->apSet.process(job);
-  }
-  return WiFi.status();
-}
-
 void WiFiManager::handleMultiAP() {
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(DEBUG_VERBOSE,F("<- HTTP Multi AP"));
@@ -4060,6 +4042,32 @@ String WiFiManager::getAPItemOut(){
       page += FPSTR(HTTP_BR);
     }
     return page;
+}
+
+String WiFiManager::getAPSetJSON(){
+  return this->apSet.getAPSetAsJSON();
+}
+
+uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet){
+  if (!configPortalActive){
+    uint8_t job = apSet.getStatus();
+    if (WiFi.status() != WL_CONNECTED || (!isHasInternet)) {
+      if (job == APSET_WAITING_CONNECTION_TO_DEFAULT_AP){
+        if (apSet.hasSSID(WiFi_SSID())) wifiConnectDefault();
+      }else if (job == APSET_READY_TO_CONNECT_NEXT_AP){
+        APCredential cre;
+        if (apSet.getCurConnAP(cre)) {
+          if (WiFi_SSID() != cre.getSSID()) connectWifi(cre.getSSID(), cre.getPass());
+        }
+      }// else = waiting time out
+    }
+    this->apSet.process(job);
+  }
+  return WiFi.status();
+}
+
+void WiFiManager::setcheckConnectForAPSetPeriod(unsigned long t){
+  this->apSet.setTimeout(t);
 }
 #endif
 

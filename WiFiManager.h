@@ -443,6 +443,10 @@ class WiFiManager
     uint8_t checkConnectForAPSet(bool isHasInternet = true);
 
     void setupAPSet();
+
+    String getAPSetJSON();
+
+    void setcheckConnectForAPSetPeriod(unsigned long t);
 #endif
 
 
