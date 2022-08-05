@@ -6,6 +6,12 @@
 #include <Arduino.h>
 
 #define DEFAULT_CONNECT_WIFI_AP_TIMEOUT 10000
+// #define DEFAULT_CONNECT_TO_DEFAULT_AP
+#define DEFAULT_CONNECT_TO_BEST_RSSI
+
+#ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+#undef DEFAULT_CONNECT_TO_DEFAULT_AP
+#endif
 
 #define APSET_WAITING_TIMEOUT                   0
 #define APSET_WAITING_CONNECTION_TO_DEFAULT_AP  1
@@ -28,6 +34,7 @@ class APCredential {
   private:
     String ssid;
     String pass;
+    int rssi = 0;
 };
 
 class APSet {
@@ -66,13 +73,19 @@ class APSet {
 
     bool hasSSID(String ssid);
 
+    bool getAPBySSID(String ssid, APCredential &ref);
+
+    #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+    void sortAPBySSID(std::vector<String> &scannedSSIDs);
+    #endif
+
   private:
     String serialize();
     
     std::vector<APCredential> apVector;
     int curConnAPIdx = -1;
     bool isHasDefaultAP = true;
-    uint8_t status = 0;
+    uint8_t status = APSET_WAITING_TIMEOUT;
     unsigned long lastTime;
     unsigned long timeout;
 };

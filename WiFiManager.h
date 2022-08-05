@@ -15,6 +15,7 @@
 #define WiFiManager_h
 
 #define MULTI_AP 2
+#define WM_DEBUG_HEHEHE
 #define ESP32//////////////////////////// DEV
 
 #if defined(ESP8266) || defined(ESP32)

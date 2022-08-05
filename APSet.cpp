@@ -95,19 +95,25 @@ void APSet::process(uint8_t doneJob){
   switch(doneJob){
     case APSET_WAITING_TIMEOUT:
     if (this->isTimeout()) {
+      #ifdef DEFAULT_CONNECT_TO_DEFAULT_AP
       if ((++curConnAPIdx)<getAPAmount()) {
         this->status = APSET_READY_TO_CONNECT_NEXT_AP;
       }else{
         curConnAPIdx = -1;
         this->status = APSET_WAITING_CONNECTION_TO_DEFAULT_AP;
       }
+      #endif
+      if ((++curConnAPIdx)>=getAPAmount()) curConnAPIdx = 0;
+      this->status = APSET_READY_TO_CONNECT_NEXT_AP;
     }
     break;
 
+    #ifdef DEFAULT_CONNECT_TO_DEFAULT_AP
     case APSET_WAITING_CONNECTION_TO_DEFAULT_AP:
       this->status = APSET_WAITING_TIMEOUT;
       this->lastTime = millis();
     break;
+    #endif
 
     case APSET_READY_TO_CONNECT_NEXT_AP:
       this->status = APSET_WAITING_TIMEOUT;
@@ -138,3 +144,20 @@ bool APSet::hasSSID(String ssid){
   }
   return false;
 }
+
+bool APSet::getAPBySSID(String ssid, APCredential &ref){
+  for (auto iter = this->apVector.begin(); iter != this->apVector.end(); iter++){
+    if ((*iter).getSSID() == ssid) {
+      ref = (*iter);
+      return true;
+    }
+  }
+  return false;
+}
+
+#ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+void APSet::sortAPBySSID(std::vector<String> &scannedSSIDs){
+
+  this->restartProcess();
+}
+#endif
