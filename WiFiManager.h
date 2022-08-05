@@ -448,6 +448,10 @@ class WiFiManager
     String getAPSetJSON();
 
     void setcheckConnectForAPSetPeriod(unsigned long t);
+
+    #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+    void callRequestScanRSSIWifi();
+    #endif
 #endif
 
 
@@ -464,6 +468,10 @@ class WiFiManager
   private:
 #ifdef MULTI_AP
     APSet apSet;
+
+    #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+    bool requestScanRSSIWifi = false;
+    #endif
 
     void loadStoragedAPSet();
 

@@ -268,6 +268,9 @@ boolean WiFiManager::autoConnect() {
  * @return {[type]}      [description]
  */
 boolean WiFiManager::autoConnect(char const *apName, char const *apPassword) {
+  #if defined(MULTI_AP) && not defined(DEFAULT__AUTO_RECONNECT_TO_LATEST_AP)
+  if (this->_wifiAutoReconnect) {
+  #endif
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(F("AutoConnect"));
   #endif
@@ -342,6 +345,13 @@ boolean WiFiManager::autoConnect(char const *apName, char const *apPassword) {
     DEBUG_WM(F("No Credentials are Saved, skipping connect"));
     #endif
   }
+  #if defined(MULTI_AP) && not defined(DEFAULT__AUTO_RECONNECT_TO_LATEST_AP)
+  } else {
+    #ifdef WM_DEBUG_LEVEL
+    DEBUG_WM(F("not allow to auto reconnect to default AP"));
+    #endif
+  }
+  #endif
 
   // possibly skip the config portal
   if (!_enableConfigPortal) {
@@ -990,7 +1000,7 @@ bool WiFiManager::shutdownConfigPortal(){
 // clean up, flow is convoluted, and causes bugs
 uint8_t WiFiManager::connectWifi(String ssid, String pass, bool connect) {
   #ifdef WM_DEBUG_LEVEL
-  DEBUG_WM(DEBUG_VERBOSE,F("Connecting as wifi client..."));
+  DEBUG_WM(F("Connecting as wifi client..."));
   #endif
   uint8_t retry = 1;
   uint8_t connRes = (uint8_t)WL_NO_SSID_AVAIL;
@@ -1044,7 +1054,7 @@ uint8_t WiFiManager::connectWifi(String ssid, String pass, bool connect) {
   }
 
   #ifdef WM_DEBUG_LEVEL
-  DEBUG_WM(DEBUG_VERBOSE,F("Connection result:"),getWLStatusString(connRes));
+  DEBUG_WM(F("Connection result:"),getWLStatusString(connRes));
   #endif
   retry++;
 }
@@ -3654,7 +3664,7 @@ String WiFiManager::WiFi_psk(bool persistent) const {
   #endif
     if(!_hasBegun){
       #ifdef WM_DEBUG_LEVEL
-        // DEBUG_WM(DEBUG_VERBOSE,"[ERROR] WiFiEvent, not ready");
+        DEBUG_WM(DEBUG_VERBOSE,"[ERROR] WiFiEvent, not ready");
       #endif
       // Serial.println(F("\n[EVENT] WiFiEvent logging (wm debug not available)"));
       // Serial.print(F("[EVENT] ID: "));
@@ -3847,7 +3857,31 @@ void WiFiManager::handleUpdateDone() {
 }
 
 #ifdef MULTI_AP
+#ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+void WiFiManager::callRequestScanRSSIWifi(){
+  this->requestScanRSSIWifi = true;
+}
+#endif
+
 void WiFiManager::setupAPSet(){
+  #ifndef DEFAULT__AUTO_RECONNECT_TO_LATEST_AP
+  _begin();
+
+  // tránh kết nối vào default ap khi mới khởi động
+  this->setWiFiAutoReconnect(false);
+
+  // do không sử dụng autoReconnect nên phải tự cài WiFiEvent thủ công
+  #ifdef WM_DEBUG_LEVEL
+  DEBUG_WM(DEBUG_VERBOSE,F("ESP32 event handler enabled"));
+  #endif
+  using namespace std::placeholders;
+  wm_event_id = WiFi.onEvent(std::bind(&WiFiManager::WiFiEvent,this,_1,_2));
+  #endif
+
+  #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
+  requestScanRSSIWifi = true;
+  #endif
+  
   this->apSet.setHasDefaultAP(WiFi_hasAutoConnect());
 
 #ifdef WM_DEBUG_LEVEL
@@ -4050,79 +4084,38 @@ String WiFiManager::getAPSetJSON(){
 
 uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
 {
-  static const unsigned int scanWifiPeriod = 62000; // scan wifi every 5 minutes
-  static unsigned long lastScanTime = 0;
   static bool isScanning = false;
 
-  if (!configPortalActive)
-  {
+  if (!configPortalActive) {
     uint8_t wfStatus = WiFi.status();
+    uint8_t job = apSet.getStatus();
 
     #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
-    if (millis() - lastScanTime > scanWifiPeriod)
+    if (requestScanRSSIWifi) // chỉ scan rssi wifi trước khi kết nối vào bất kỳ wifi nào (kể cả lúc đầu)
     { // call scan wifi
-      WiFi.disconnect();
+      WiFi_Disconnect();
       _numNetworks = 0; // reset number of networks so we must force scan
       WiFi_scanNetworks(true, true);
-      lastScanTime = millis();
       isScanning = true;
+      requestScanRSSIWifi = false;
     }
-    if ((_numNetworks > 0) && isScanning)
-    {
-      // sort networks
-      int n = _numNetworks;
-      int *indices = new int[n];
-      for (int i = 0; i < n; i++)
-      {
-        indices[i] = i;
-      }
-      // RSSI SORT
-      for (int i = 0; i < n; i++)
-      {
-        for (int j = i + 1; j < n; j++)
-        {
-          if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i]))
-          {
-            std::swap(indices[i], indices[j]);
-          }
+    if ((_numNetworks > 0) && isScanning) {// quet xong
+      apSet.resetRSSIOfAll();
+      APCredential* apRef = nullptr;
+      for (int i = 0; i < _numNetworks; i++) {
+        if (apSet.getAPBySSID(WiFi.SSID(i), apRef)) {
+          apRef->updateRSSI(WiFi.RSSI(i));
         }
       }
-      // remove duplicates ( must be RSSI sorted )
-      if (1)
-      {
-        String cssid;
-        for (int i = 0; i < n; i++)
-        {
-          if (indices[i] == -1)
-            continue;
-          cssid = WiFi.SSID(indices[i]);
-          for (int j = i + 1; j < n; j++)
-          {
-            if (cssid == WiFi.SSID(indices[j]))
-            {
-              indices[j] = -1; // set dup aps to index -1
-            }
-          }
-        }
-      }
-      // export
-      APCredential& apRef;
-      for (int i = 0; i < n; i++) {
-        if (indices[i] == -1) continue;
-        if (getAPBySSID(WiFi.SSID(indices[i]), apRef)) {
-          apRef.updateRSSI(WiFi.RSSI(indices[i]));
-        }
-      }
-      apSet.sortAPBySSID(scannedSSIDs);
-      delete[] indices;
+      apSet.sortAPByRSSI();
+      feedWdt(1);feedWdt(0);yield(); // watchdog
+      this->storageAPSet();
       isScanning = false;
     }
     #endif
 
-    //
-    uint8_t job = apSet.getStatus();
-    if ((!isScanning) && (wfStatus != WL_CONNECTED || (!isHasInternet)))
-    {
+    // state machine cho ket noi wifi
+    if ((!isScanning) && (wfStatus != WL_CONNECTED || (!isHasInternet))){
       if (job == APSET_WAITING_CONNECTION_TO_DEFAULT_AP)
       {
         if (apSet.hasSSID(WiFi_SSID()))
@@ -4133,12 +4126,16 @@ uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
         APCredential cre;
         if (apSet.getCurConnAP(cre))
         {
+          #ifdef DEFAULT__AUTO_RECONNECT_TO_LATEST_AP
           if (WiFi_SSID() != cre.getSSID())
+          #endif // cho kết nối với default ap thì cần có if để loại trường hợp trùng, trùng đã có APSET_WAITING_CONNECTION_TO_DEFAULT_AP xử lý
+          {
             connectWifi(cre.getSSID(), cre.getPass());
+          }
         }
-      } // else = waiting time out
+      } // else APSET_WAITING_TIMEOUT
+      this->apSet.process(job);
     }
-    this->apSet.process(job);
   }
   return WiFi.status();
 }

@@ -11,7 +11,8 @@ APSet APSet::Deserialize(String buff){
     for(JsonObject& obj : array) {
       String ssid = obj["ssid"].as<String>();
       String pass = obj["pass"].as<String>();
-      set.apVector.push_back(APCredential(ssid, pass));
+      int rssi = obj["rssi"].as<int>();
+      set.apVector.push_back(APCredential(ssid, pass, rssi));
     }
   }
 
@@ -26,7 +27,7 @@ APSet::APSet(){
 void APSet::restartProcess(){
   this->status = APSET_WAITING_TIMEOUT;
   this->curConnAPIdx = getAPAmount()+2;
-  this->lastTime = millis() - this->timeout;
+  this->lastTime = 0;// this->lastTime == 0 so isTimeout will return true immediatly
 }
 
 void APSet::setAP(String ssid, String pass){
@@ -95,20 +96,21 @@ void APSet::process(uint8_t doneJob){
   switch(doneJob){
     case APSET_WAITING_TIMEOUT:
     if (this->isTimeout()) {
-      #ifdef DEFAULT_CONNECT_TO_DEFAULT_AP
+      #ifdef DEFAULT__AUTO_RECONNECT_TO_LATEST_AP
       if ((++curConnAPIdx)<getAPAmount()) {
         this->status = APSET_READY_TO_CONNECT_NEXT_AP;
       }else{
         curConnAPIdx = -1;
         this->status = APSET_WAITING_CONNECTION_TO_DEFAULT_AP;
       }
-      #endif
+      #else
       if ((++curConnAPIdx)>=getAPAmount()) curConnAPIdx = 0;
       this->status = APSET_READY_TO_CONNECT_NEXT_AP;
+      #endif
     }
     break;
 
-    #ifdef DEFAULT_CONNECT_TO_DEFAULT_AP
+    #ifdef DEFAULT__AUTO_RECONNECT_TO_LATEST_AP
     case APSET_WAITING_CONNECTION_TO_DEFAULT_AP:
       this->status = APSET_WAITING_TIMEOUT;
       this->lastTime = millis();
@@ -123,7 +125,12 @@ void APSet::process(uint8_t doneJob){
 }
 
 bool APSet::isTimeout(){
-  return (millis()-this->lastTime)>this->timeout;
+  return
+    #ifndef DEFAULT__AUTO_RECONNECT_TO_LATEST_AP
+    (this->lastTime == 0)
+    #endif
+    || ((millis()-this->lastTime)>this->timeout)
+  ;
 }
 
 uint8_t APSet::getStatus(){
@@ -145,10 +152,10 @@ bool APSet::hasSSID(String ssid){
   return false;
 }
 
-bool APSet::getAPBySSID(String ssid, APCredential &ref){
+bool APSet::getAPBySSID(String ssid, APCredential* &ref){
   for (auto iter = this->apVector.begin(); iter != this->apVector.end(); iter++){
     if ((*iter).getSSID() == ssid) {
-      ref = (*iter);
+      ref = &(*iter);
       return true;
     }
   }
@@ -156,8 +163,24 @@ bool APSet::getAPBySSID(String ssid, APCredential &ref){
 }
 
 #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
-void APSet::sortAPBySSID(std::vector<String> &scannedSSIDs){
+void APSet::resetRSSIOfAll(){
+  for (auto iter = this->apVector.begin(); iter != this->apVector.end(); iter++){
+    (*iter).updateRSSI(-999);
+  }
+}
 
-  this->restartProcess();
+void APSet::sortAPByRSSI(){
+  sort(this->apVector.begin(), this->apVector.end(), &rssiComparator);
+  for (auto iter = this->apVector.begin(); iter != this->apVector.end(); iter++){
+    Serial.print((*iter).getSSID());
+    Serial.print(": ");
+    Serial.println((*iter).getRSSI());
+  }
+  this->status = APSET_WAITING_TIMEOUT;
+  this->curConnAPIdx = getAPAmount();
+}
+
+bool rssiComparator(const APCredential& ap1, const APCredential& ap2) {
+   return ap1.getRSSI() > ap2.getRSSI();
 }
 #endif
