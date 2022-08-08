@@ -27,7 +27,7 @@ APSet::APSet(){
 void APSet::restartProcess(){
   this->status = APSET_WAITING_TIMEOUT;
   this->curConnAPIdx = getAPAmount()+2;
-  this->lastTime = 0;// this->lastTime == 0 so isTimeout will return true immediatly
+  this->lastTime = millis();
 }
 
 void APSet::setAP(String ssid, String pass){
@@ -125,11 +125,7 @@ void APSet::process(uint8_t doneJob){
 }
 
 bool APSet::isTimeout(){
-  return
-    #ifndef DEFAULT__AUTO_RECONNECT_TO_LATEST_AP
-    (this->lastTime == 0)
-    #endif
-    || ((millis()-this->lastTime)>this->timeout)
+  return ((millis()-this->lastTime)>this->timeout);
   ;
 }
 

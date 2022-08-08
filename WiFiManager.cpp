@@ -872,7 +872,6 @@ uint8_t WiFiManager::processConfigPortal(){
           feedWdt(1);
           yield(); // watchdog
           // Restart APSet process
-          this->apSet.restartProcess();
           this->apSet.setAP(_ssid, _pass);
           this->storageAPSet();
 #endif
