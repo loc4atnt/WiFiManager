@@ -4032,6 +4032,20 @@ String WiFiManager::doMultiAP(){
     DEBUG_WM(jsonStr);
     #endif
 
+    #ifdef JSON_V6
+    const int capacity = JSON_OBJECT_SIZE(3);
+    DynamicJsonDocument doc(capacity);
+    DeserializationError error = deserializeJson(doc, jsonStr);
+    if (!error){
+      String ssid = doc["ssid"].as<String>();
+      String pass = doc["pass"].as<String>();
+      if (ssid!="") {
+        this->apSet.setAP(ssid, pass);
+        this->storageAPSet();
+        statusMsg = "done";
+      } else statusMsg = "invalid_body";
+    }
+    #else
     const int capacity = JSON_OBJECT_SIZE(3);
     DynamicJsonBuffer jb(capacity);
     JsonObject& root = jb.parseObject(jsonStr);
@@ -4044,6 +4058,7 @@ String WiFiManager::doMultiAP(){
         statusMsg = "done";
       } else statusMsg = "invalid_body";
     }
+    #endif
 
   } else statusMsg = "unknown request";
 

@@ -3,6 +3,20 @@
 APSet APSet::Deserialize(String buff){
   APSet set;
 
+  #ifdef JSON_V6
+  const int capacity = JSON_OBJECT_SIZE(15);
+  DynamicJsonDocument doc(capacity);
+  DeserializationError error = deserializeJson(doc, buff);
+  if (!error){
+    JsonArray array = doc["ap_set"].as<JsonArray>();
+    for(JsonObject obj : array) {
+      String ssid = obj["ssid"].as<String>();
+      String pass = obj["pass"].as<String>();
+      int rssi = obj["rssi"].as<int>();
+      set.apVector.push_back(APCredential(ssid, pass, rssi));
+    }
+  }
+  #else
   const int capacity = JSON_OBJECT_SIZE(15);
   DynamicJsonBuffer jb(capacity);
   JsonObject& root = jb.parseObject(buff);
@@ -15,6 +29,7 @@ APSet APSet::Deserialize(String buff){
       set.apVector.push_back(APCredential(ssid, pass, rssi));
     }
   }
+  #endif
 
   return set;
 }
