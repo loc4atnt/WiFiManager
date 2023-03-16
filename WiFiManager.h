@@ -16,7 +16,8 @@
 
 #define MULTI_AP 2
 #define WM_DEBUG_HEHEHE
-#define ESP32//////////////////////////// DEV
+// #define ESP32//////////////////////////// DEV
+#define ESP8266//////////////////////////// DEV
 
 #if defined(ESP8266) || defined(ESP32)
 
@@ -31,8 +32,12 @@
 
 #include "APSet.h"
 #include "MD5.h"
-#include <Preferences.h>
 #include <ArduinoJson.h>
+#ifdef USE_PREFERENCE
+#include <Preferences.h>
+#endif
+
+#ifdef ESP32
 #include "ex_src/esp32_watchdog.h"
 
 #ifdef USE_LittleFS
@@ -41,9 +46,25 @@
 #else
   #include <SPIFFS.h>
 #endif
+#endif
 
+#ifdef ESP8266
+#ifdef USE_LittleFS
+  #define SPIFFS LittleFS
+  #include <LittleFS.h> 
+  #include <FS.h>
+#else
+  #include <SPIFFS.h>
+#endif
+#endif
+
+#ifdef USING_PREFERENCE
 #define AP_SET_PREFERENCES_KEY          "WM_AP_SET"
 #define AP_SET_CHECKSUM_PREFERENCES_KEY "WM_AP_SET_CS"
+#else
+#define AP_SET_FILE_KEY          "/apset.wm"
+#define AP_SET_FILE_CHECKSUM "/apset_cs.wm"
+#endif
 #endif
 
 // #define WM_MDNS            // includes MDNS, also set MDNS with sethostname

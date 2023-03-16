@@ -6,7 +6,7 @@
 #include <ArduinoJson.h>
 #include <Arduino.h>
 
-// #define JSON_V6
+#define JSON_V6
 
 #define DEFAULT_CONNECT_WIFI_AP_TIMEOUT 10000
 // #define DEFAULT__AUTO_RECONNECT_TO_LATEST_AP

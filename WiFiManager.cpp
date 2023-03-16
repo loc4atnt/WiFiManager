@@ -869,7 +869,9 @@ uint8_t WiFiManager::processConfigPortal(){
           #endif
 
 #ifdef MULTI_AP
+          #ifdef ESP32
           feedWdt(1);
+          #endif
           yield(); // watchdog
           // Restart APSet process
           this->apSet.setAP(_ssid, _pass);
@@ -1017,7 +1019,9 @@ uint8_t WiFiManager::connectWifi(String ssid, String pass, bool connect) {
   // [E][WiFiSTA.cpp:221] begin(): connect failed!
 
   while(retry <= _connectRetries && (connRes!=WL_CONNECTED)){
+    #ifdef ESP32
     feedWdt(1);
+    #endif
     yield(); // watchdog
   if(_connectRetries > 1){
     if(_aggresiveReconn) delay(1000); // add idle time before recon
@@ -1215,13 +1219,17 @@ uint8_t WiFiManager::waitForConnectResult(uint32_t timeout) {
     #ifdef WM_DEBUG_LEVEL
     DEBUG_WM(F("connectTimeout not set, ESP waitForConnectResult..."));
     #endif
+    #ifdef ESP32
     // Turn off watchdog
     DEBUG_WM(F("turn off watchdog"));
     disableLoopWDT();
+    #endif
     uint8_t waitRes = WiFi.waitForConnectResult();
+    #ifdef ESP32
     // Turn on watchdog
     DEBUG_WM(F("turn on watchdog"));
     enableLoopWDT();
+    #endif
     return waitRes;
   }
 
@@ -1241,7 +1249,9 @@ uint8_t WiFiManager::waitForConnectResult(uint32_t timeout) {
     DEBUG_WM (F("."));
     #endif
     delay(100);
+    #ifdef ESP32
     feedWdt(1);
+    #endif
     yield(); // watchdog
   }
   return status;
@@ -1503,9 +1513,13 @@ bool WiFiManager::WiFi_scanNetworks(bool force,bool async){
       }
       else{
         DEBUG_WM(DEBUG_VERBOSE,F("WiFi Scan SYNC started 2"));
+        #ifdef ESP32
         disableLoopWDT();
+        #endif
         res = WiFi.scanNetworks();
+        #ifdef ESP32
         enableLoopWDT();
+        #endif
       }
       if(res == WIFI_SCAN_FAILED){
         #ifdef WM_DEBUG_LEVEL
@@ -1936,8 +1950,10 @@ void WiFiManager::handleInfo() {
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(DEBUG_VERBOSE,F("<- HTTP Info"));
   #endif
+  #ifdef ESP32
   DEBUG_WM(F("Turn off Watchdog"));
   disableLoopWDT();
+  #endif
 
   handleRequest();
   String page = getHTTPHead(FPSTR(S_titleinfo)); // @token titleinfo
@@ -2029,8 +2045,10 @@ void WiFiManager::handleInfo() {
   page += FPSTR(HTTP_HELP);
   page += FPSTR(HTTP_END);
 
+  #ifdef ESP32
   DEBUG_WM(F("Turn on Watchdog"));
   enableLoopWDT();
+  #endif
 
   HTTPSend(page);
 
@@ -3869,12 +3887,14 @@ void WiFiManager::setupAPSet(){
   // tránh kết nối vào default ap khi mới khởi động
   this->setWiFiAutoReconnect(false);
 
+  #ifdef ESP32
   // do không sử dụng autoReconnect nên phải tự cài WiFiEvent thủ công
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(DEBUG_VERBOSE,F("ESP32 event handler enabled"));
   #endif
   using namespace std::placeholders;
   wm_event_id = WiFi.onEvent(std::bind(&WiFiManager::WiFiEvent,this,_1,_2));
+  #endif
   #endif
 
   #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
@@ -3900,17 +3920,33 @@ void WiFiManager::setupAPSet(){
 }
 
 void WiFiManager::loadStoragedAPSet(){
-  String md5;
+  String md5="";
+  #ifdef USE_PREFERENCE
   Preferences preferences0;
 	preferences0.begin(AP_SET_CHECKSUM_PREFERENCES_KEY, false);
 	md5 = preferences0.getString("md5", "");
 	preferences0.end();
+  #else
+  File file = SPIFFS.open(AP_SET_FILE_CHECKSUM, "r");
+  if (file){
+    while(file.available()) md5 += file.read();
+    file.close();
+  }
+  #endif
 
-  String json;
+  String json = "";
+  #ifdef USE_PREFERENCE
   Preferences preferences;
 	preferences.begin(AP_SET_PREFERENCES_KEY, false);
 	json = preferences.getString("json", "");
 	preferences.end();
+  #else
+  File file2 = SPIFFS.open(AP_SET_FILE_KEY, "r");
+  if (file2){
+    while(file2.available()) json += file2.read();
+    file2.close();
+  }
+  #endif
 
   if (json == "" || md5 == "" || md5!=MD5::str_make_str(json)){
 #ifdef WM_DEBUG_LEVEL
@@ -3927,10 +3963,18 @@ void WiFiManager::loadStoragedAPSet(){
 
 void WiFiManager::storageAPSet(){
   String json = this->apSet.getAPSetAsJSON();
+  #ifdef USE_PREFERENCE
   Preferences preferences0;
 	preferences0.begin(AP_SET_PREFERENCES_KEY, false);
 	preferences0.putString("json", json);
   preferences0.end();
+  #else
+  File file0 = SPIFFS.open(AP_SET_FILE_KEY, "r");
+  if (file0) {
+    file0.print(json);
+    file0.close();
+  }
+  #endif
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM("storage json:");
   DEBUG_WM(json);
@@ -3938,10 +3982,18 @@ void WiFiManager::storageAPSet(){
 
   // checksum by md5
   String md5OfJSON = MD5::str_make_str(json);
+  #ifdef USE_PREFERENCE
   Preferences preferences;
 	preferences.begin(AP_SET_CHECKSUM_PREFERENCES_KEY, false);
 	preferences.putString("md5", md5OfJSON);
   preferences.end();
+  #else
+  File file1 = SPIFFS.open(AP_SET_FILE_CHECKSUM, "r");
+  if (file1) {
+    file1.print(md5OfJSON);
+    file1.close();
+  }
+  #endif
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM("storage md5OfJSON:");
   DEBUG_WM(md5OfJSON);
@@ -4122,7 +4174,10 @@ uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
         }
       }
       apSet.sortAPByRSSI();
-      feedWdt(1);feedWdt(0);yield(); // watchdog
+      #ifdef ESP32
+      feedWdt(1);feedWdt(0);
+      #endif
+      yield(); // watchdog
       this->storageAPSet();
       isScanning = false;
     }
