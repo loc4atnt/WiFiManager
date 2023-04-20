@@ -3921,7 +3921,7 @@ void WiFiManager::setupAPSet(){
 
 void WiFiManager::loadStoragedAPSet(){
   String md5="";
-  #ifdef USE_PREFERENCE
+  #ifdef USING_PREFERENCE
   Preferences preferences0;
 	preferences0.begin(AP_SET_CHECKSUM_PREFERENCES_KEY, false);
 	md5 = preferences0.getString("md5", "");
@@ -3929,13 +3929,13 @@ void WiFiManager::loadStoragedAPSet(){
   #else
   File file = SPIFFS.open(AP_SET_FILE_CHECKSUM, "r");
   if (file){
-    while(file.available()) md5 += file.read();
+    while(file.available()) md5 += (char)file.read();
     file.close();
   }
   #endif
 
   String json = "";
-  #ifdef USE_PREFERENCE
+  #ifdef USING_PREFERENCE
   Preferences preferences;
 	preferences.begin(AP_SET_PREFERENCES_KEY, false);
 	json = preferences.getString("json", "");
@@ -3943,7 +3943,7 @@ void WiFiManager::loadStoragedAPSet(){
   #else
   File file2 = SPIFFS.open(AP_SET_FILE_KEY, "r");
   if (file2){
-    while(file2.available()) json += file2.read();
+    while(file2.available()) json += (char)file2.read();
     file2.close();
   }
   #endif
@@ -3958,21 +3958,31 @@ void WiFiManager::loadStoragedAPSet(){
 #endif
     return;
   }
+#ifdef WM_DEBUG_LEVEL
+    DEBUG_WM(F("Deserialize json:"));
+    DEBUG_WM(json);
+    DEBUG_WM("It has MD5:");
+    DEBUG_WM(md5);
+#endif
   this->apSet = APSet::Deserialize(json);
 }
 
 void WiFiManager::storageAPSet(){
   String json = this->apSet.getAPSetAsJSON();
-  #ifdef USE_PREFERENCE
+  #ifdef USING_PREFERENCE
   Preferences preferences0;
 	preferences0.begin(AP_SET_PREFERENCES_KEY, false);
 	preferences0.putString("json", json);
   preferences0.end();
   #else
-  File file0 = SPIFFS.open(AP_SET_FILE_KEY, "r");
+  File file0 = SPIFFS.open(AP_SET_FILE_KEY, "w");
   if (file0) {
     file0.print(json);
     file0.close();
+  } else {
+    #ifdef WM_DEBUG_LEVEL
+    DEBUG_WM("cannot open file");
+    #endif
   }
   #endif
   #ifdef WM_DEBUG_LEVEL
@@ -3982,16 +3992,20 @@ void WiFiManager::storageAPSet(){
 
   // checksum by md5
   String md5OfJSON = MD5::str_make_str(json);
-  #ifdef USE_PREFERENCE
+  #ifdef USING_PREFERENCE
   Preferences preferences;
 	preferences.begin(AP_SET_CHECKSUM_PREFERENCES_KEY, false);
 	preferences.putString("md5", md5OfJSON);
   preferences.end();
   #else
-  File file1 = SPIFFS.open(AP_SET_FILE_CHECKSUM, "r");
+  File file1 = SPIFFS.open(AP_SET_FILE_CHECKSUM, "w");
   if (file1) {
     file1.print(md5OfJSON);
     file1.close();
+  } else {
+    #ifdef WM_DEBUG_LEVEL
+    DEBUG_WM("cannot open file");
+    #endif
   }
   #endif
   #ifdef WM_DEBUG_LEVEL
@@ -4187,8 +4201,9 @@ uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
     if ((!isScanning) && (wfStatus != WL_CONNECTED || (!isHasInternet))){
       if (job == APSET_WAITING_CONNECTION_TO_DEFAULT_AP)
       {
-        if (apSet.hasSSID(WiFi_SSID()))
+        if (apSet.hasSSID(WiFi_SSID())){
           wifiConnectDefault();
+        }
       }
       else if (job == APSET_READY_TO_CONNECT_NEXT_AP)
       {

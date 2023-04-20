@@ -17,9 +17,13 @@
 #define MULTI_AP 2
 #define WM_DEBUG_HEHEHE
 // #define ESP32//////////////////////////// DEV
-#define ESP8266//////////////////////////// DEV
+// #define ESP8266//////////////////////////// DEV
 
 #if defined(ESP8266) || defined(ESP32)
+
+#ifdef ESP32
+#define USING_PREFERENCE
+#endif
 
 #ifdef ESP8266
 #include <core_version.h>
@@ -33,7 +37,7 @@
 #include "APSet.h"
 #include "MD5.h"
 #include <ArduinoJson.h>
-#ifdef USE_PREFERENCE
+#ifdef USING_PREFERENCE
 #include <Preferences.h>
 #endif
 
