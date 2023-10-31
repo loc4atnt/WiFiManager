@@ -4,7 +4,7 @@ APSet APSet::Deserialize(String buff){
   APSet set;
 
   #ifdef JSON_V6
-  const int capacity = JSON_OBJECT_SIZE(15);
+  const int capacity = JSON_OBJECT_SIZE(20);
   DynamicJsonDocument doc(capacity);
   DeserializationError error = deserializeJson(doc, buff);
   if (!error){
@@ -17,7 +17,7 @@ APSet APSet::Deserialize(String buff){
     }
   }
   #else
-  const int capacity = JSON_OBJECT_SIZE(15);
+  const int capacity = JSON_OBJECT_SIZE(20);
   DynamicJsonBuffer jb(capacity);
   JsonObject& root = jb.parseObject(buff);
   if (root.success()){
