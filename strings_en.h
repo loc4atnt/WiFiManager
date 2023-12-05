@@ -293,6 +293,8 @@ const char R_update[]             PROGMEM = "/update";
 const char R_updatedone[]         PROGMEM = "/u";
 const char R_multiapsave[]          PROGMEM = "/multiap";
 const char R_multiap[]          PROGMEM = "/aplist";
+const char R_wifilist[]          PROGMEM = "/wifilist";
+const char R_paramlist[]          PROGMEM = "/paramlist";
 
 
 //Strings

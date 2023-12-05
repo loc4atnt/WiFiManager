@@ -485,6 +485,10 @@ bool WiFiManager::startAP(){
   // start soft AP with password or anonymous
   // default channel is 1 here and in esplib, @todo just change to default remove conditionals
   if (_apPassword != "") {
+    #ifdef WM_DEBUG_LEVEL
+    DEBUG_WM(DEBUG_VERBOSE,F("AP has password!"));
+    DEBUG_WM(DEBUG_VERBOSE,_apPassword);
+    #endif
     if(channel>0){
       ret = WiFi.softAP(_apName.c_str(), _apPassword.c_str(),channel,_apHidden);
     }
@@ -636,6 +640,9 @@ void WiFiManager::setupHTTPServer(){
   server->on(G(R_multiap),  std::bind(&WiFiManager::handleMultiAP, this));
 #endif
   server->onNotFound (std::bind(&WiFiManager::handleNotFound, this));
+
+  server->on(G(R_wifilist),       std::bind(&WiFiManager::handleWifiList, this));
+  server->on(G(R_paramlist),       std::bind(&WiFiManager::handleParamList, this));
 
   server->on(G(R_update), std::bind(&WiFiManager::handleUpdate, this));
   server->on(G(R_updatedone), HTTP_POST, std::bind(&WiFiManager::handleUpdateDone, this), std::bind(&WiFiManager::handleUpdating, this));
@@ -1408,6 +1415,59 @@ void WiFiManager::handleWifi(boolean scan) {
 
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(DEBUG_DEV,F("Sent config page"));
+  #endif
+}
+
+void WiFiManager::handleParamList() {
+  #ifdef WM_DEBUG_LEVEL
+  DEBUG_WM(DEBUG_VERBOSE,F("<- HTTP Params List"));
+  #endif
+  handleRequest();
+
+  String myjson = "{";
+
+  int n = _paramsCount;
+  char tmp[128] = {0};
+  for (int i = 0; i < n; i++) {
+    if (_params[i] == NULL || _params[i]->_length == 0 || _params[i]->_length > 99999) continue;
+    // "key":"value"
+    sprintf(tmp, "\"%s\":\"%s\"", _params[i]->getID(), _params[i]->getValue());
+    myjson += tmp;
+    if (i < n-1) myjson += ",";
+  }
+  myjson += '}';
+
+  HTTPSendJSON(myjson);
+
+  #ifdef WM_DEBUG_LEVEL
+  DEBUG_WM(DEBUG_DEV,F("Sent params list json"));
+  #endif
+}
+
+void WiFiManager::handleWifiList() {
+  #ifdef WM_DEBUG_LEVEL
+  DEBUG_WM(DEBUG_VERBOSE,F("<- HTTP Wifi List"));
+  #endif
+  handleRequest();
+
+  String myjson = "[";
+
+  WiFi_scanNetworks(true,false);
+  int n = _numNetworks;
+  char tmp[48] = {0};
+  for (int i = 0; i < n; i++) {
+    if (i > 0) myjson += ",";
+    // {"ssid":"","rssi":}
+    int rssi = WiFi.RSSI(i);
+    sprintf(tmp, "{\"ssid\":\"%s\",\"rssi\":%d}", WiFi.SSID(i).c_str(), rssi);
+    myjson += tmp;
+  }
+  myjson += ']';
+
+  HTTPSendJSON(myjson);
+
+  #ifdef WM_DEBUG_LEVEL
+  DEBUG_WM(DEBUG_DEV,F("Sent wifi list json"));
   #endif
 }
 

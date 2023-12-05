@@ -665,6 +665,9 @@ class WiFiManager
     void          handleParamSave();
     void          doParamSave();
 
+    void          handleWifiList();
+    void          handleParamList();
+
     boolean       captivePortal();
     boolean       configPortalHasTimeout();
     uint8_t       processConfigPortal();
