@@ -2,19 +2,27 @@
  * WiFiManager advanced demo, contains advanced configurartion options
  * Implements TRIGGEN_PIN button press, press for ondemand configportal, hold for 3 seconds for reset settings.
  */
+
+uint16_t USER_CONFIG_ARDUINO_LOOP_STACK_SIZE = 10240;
+
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 
 #define TRIGGER_PIN 0
 
 // wifimanager can run in a blocking mode or a non blocking mode
 // Be sure to know how to process loops with no delay() if using non blocking
-bool wm_nonblocking = false; // change to true to use non blocking
+bool wm_nonblocking = true; // change to true to use non blocking
 
 WiFiManager wm; // global wm instance
 WiFiManagerParameter custom_field; // global param ( for non blocking w params )
 
 void setup() {
-  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP  
+  WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP
+
+
+  WiFi.softAP("_", "");
+  WiFi.softAPdisconnect(true);
+
   Serial.begin(115200);
   Serial.setDebugOutput(true);  
   delay(3000);
@@ -109,6 +117,7 @@ void checkButton(){
       Serial.println("Starting config portal");
       wm.setConfigPortalTimeout(120);
       
+      disableLoopWDT();
       if (!wm.startConfigPortal("OnDemandAP","password")) {
         Serial.println("failed to connect or hit timeout");
         delay(3000);
@@ -117,6 +126,7 @@ void checkButton(){
         //if you get here you have connected to the WiFi
         Serial.println("connected...yeey :)");
       }
+      enableLoopWDT();
     }
   }
 }

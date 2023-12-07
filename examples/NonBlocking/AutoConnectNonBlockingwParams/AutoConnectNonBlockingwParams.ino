@@ -1,3 +1,5 @@
+uint16_t USER_CONFIG_ARDUINO_LOOP_STACK_SIZE = 1024;
+
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 WiFiManager wm;
 WiFiManagerParameter custom_mqtt_server("server", "mqtt server", "", 40);

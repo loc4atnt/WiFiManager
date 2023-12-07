@@ -42,7 +42,7 @@
 #endif
 
 #ifdef ESP32
-#include "ex_src/esp32_watchdog.h"
+#include "wm_esp32_watchdog.h"
 
 #ifdef USE_LittleFS
   #define SPIFFS LITTLEFS

@@ -1,5 +1,5 @@
 #ifdef ESP32
-#include "esp32_watchdog.h"
+#include "wm_esp32_watchdog.h"
 #include "esp_attr.h"
 
 static hw_timer_t* wdtTimer = NULL;
@@ -8,37 +8,37 @@ static uint8_t feedWdtCounter = 0;
 
 static void watchdog_task (void* pv) {
 	while (1) {
-		feedWdt(0);
+		wm_feedWdt(0);
 		
 		vTaskDelay(pdMS_TO_TICKS(100)); // 100ms
 	}
 }
 
-void IRAM_ATTR resetModule() {
+void IRAM_ATTR wm_resetModule() {
 	esp_restart();
 }
 
-void IRAM_ATTR feedWdtVKL() {
+void IRAM_ATTR wm_feedWdtVKL() {
 	rtc_wdt_feed(); // reset RTC watchdog
 	esp_task_wdt_reset();
 	if (wdtTimer != NULL) 
 		timerWrite(wdtTimer, 0); //reset timer (feed watchdog)
 }
-void IRAM_ATTR feedWdt(uint8_t core) {
+void IRAM_ATTR wm_feedWdt(uint8_t core) {
 	// if (feedWdtLastCore != core) {
 	// 	feedWdtCounter++;
 	// }
 	
 	// if (feedWdtCounter >= 3) {
-	// 	feedWdtVKL();
+	// 	wm_feedWdtVKL();
 	// 	feedWdtCounter = 0;
 	// }
 	
 	// feedWdtLastCore = core;
-	feedWdtVKL();
+	wm_feedWdtVKL();
 }
 
-void IRAM_ATTR setupWdt() {
+void IRAM_ATTR wm_setupWdt() {
 	uint32_t ms = 20000UL; // 10 seconds
 	
 	// setup RTC reset (system, not just CPU !important)
@@ -52,7 +52,7 @@ void IRAM_ATTR setupWdt() {
 	
 	// init interrupt wdt
 	wdtTimer = timerBegin(0, 80, true); //timer 0, div 80
-	timerAttachInterrupt(wdtTimer, &resetModule, true);
+	timerAttachInterrupt(wdtTimer, &wm_resetModule, true);
 	timerAlarmWrite(wdtTimer, ms*1000UL, false); //set time in us
 
 	// https://github.com/espressif/arduino-esp32/issues/1313

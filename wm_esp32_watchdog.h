@@ -11,13 +11,13 @@
 extern "C" {
 #endif
 
-void IRAM_ATTR resetModule();
+void IRAM_ATTR wm_resetModule();
 
-void IRAM_ATTR feedWdt(uint8_t core);
+void IRAM_ATTR wm_feedWdt(uint8_t core);
 
-void IRAM_ATTR feedWdtVKL();
+void IRAM_ATTR wm_feedWdtVKL();
 
-void IRAM_ATTR setupWdt();
+void IRAM_ATTR wm_setupWdt();
 
 #ifdef __cplusplus
 }

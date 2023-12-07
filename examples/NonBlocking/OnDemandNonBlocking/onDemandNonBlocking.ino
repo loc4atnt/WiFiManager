@@ -4,6 +4,8 @@
  * trigger pin will start a webportal for 120 seconds then turn it off.
  * startAP = true will start both the configportal AP and webportal
  */
+uint16_t USER_CONFIG_ARDUINO_LOOP_STACK_SIZE = 1024;
+
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 
 // include MDNS
@@ -21,7 +23,7 @@ WiFiManager wm;
 unsigned int  timeout   = 120; // seconds to run for
 unsigned int  startTime = millis();
 bool portalRunning      = false;
-bool startAP            = false; // start AP and webserver if true, else start only webserver
+bool startAP            = true; // start AP and webserver if true, else start only webserver
 
 void setup() {
   WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP  
@@ -36,8 +38,8 @@ void setup() {
   // wm.resetSettings();
   wm.setHostname("MDNSEXAMPLE");
   // wm.setEnableConfigPortal(false);
-  // wm.setConfigPortalBlocking(false);
-  wm.autoConnect();
+  wm.setConfigPortalBlocking(false);
+  wm.autoConnect("NHAM_001","12345678");
 }
 
 void loop() {
@@ -71,7 +73,7 @@ void doWiFiManager(){
     if(startAP){
       Serial.println("Button Pressed, Starting Config Portal");
       wm.setConfigPortalBlocking(false);
-      wm.startConfigPortal();
+      wm.startConfigPortal("NHAM_001","12345678");
     }  
     else{
       Serial.println("Button Pressed, Starting Web Portal");

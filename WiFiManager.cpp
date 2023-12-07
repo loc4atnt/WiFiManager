@@ -877,7 +877,7 @@ uint8_t WiFiManager::processConfigPortal(){
 
 #ifdef MULTI_AP
           #ifdef ESP32
-          feedWdt(1);
+          wm_feedWdt(1);
           #endif
           yield(); // watchdog
           // Restart APSet process
@@ -1027,7 +1027,7 @@ uint8_t WiFiManager::connectWifi(String ssid, String pass, bool connect) {
 
   while(retry <= _connectRetries && (connRes!=WL_CONNECTED)){
     #ifdef ESP32
-    feedWdt(1);
+    wm_feedWdt(1);
     #endif
     yield(); // watchdog
   if(_connectRetries > 1){
@@ -1257,7 +1257,7 @@ uint8_t WiFiManager::waitForConnectResult(uint32_t timeout) {
     #endif
     delay(100);
     #ifdef ESP32
-    feedWdt(1);
+    wm_feedWdt(1);
     #endif
     yield(); // watchdog
   }
@@ -1437,6 +1437,7 @@ void WiFiManager::handleParamList() {
   }
   myjson += '}';
 
+  server->sendHeader(FPSTR(HTTP_HEAD_CORS), FPSTR(HTTP_HEAD_CORS_ALLOW_ALL)); // @HTTPHEAD send cors
   HTTPSendJSON(myjson);
 
   #ifdef WM_DEBUG_LEVEL
@@ -1464,6 +1465,7 @@ void WiFiManager::handleWifiList() {
   }
   myjson += ']';
 
+  server->sendHeader(FPSTR(HTTP_HEAD_CORS), FPSTR(HTTP_HEAD_CORS_ALLOW_ALL)); // @HTTPHEAD send cors
   HTTPSendJSON(myjson);
 
   #ifdef WM_DEBUG_LEVEL
@@ -4249,7 +4251,7 @@ uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
       }
       apSet.sortAPByRSSI();
       #ifdef ESP32
-      feedWdt(1);feedWdt(0);
+      wm_feedWdt(1);wm_feedWdt(0);
       #endif
       yield(); // watchdog
       this->storageAPSet();
