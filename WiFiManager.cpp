@@ -1455,16 +1455,32 @@ void WiFiManager::handleWifiList() {
   #endif
   handleRequest();
 
-  String myjson = "[";
-
   WiFi_scanNetworks(true,false);
   int n = _numNetworks;
+
+  //sort networks
+  int indices[n];
+  for (int i = 0; i < n; i++) {
+    indices[i] = i;
+  }
+  // RSSI SORT
+  for (int i = 0; i < n; i++) {
+    for (int j = i + 1; j < n; j++) {
+      if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
+        std::swap(indices[i], indices[j]);
+      }
+    }
+  }
+
+  if (n > 10) n = 10;
+
+  String myjson = "[";
   char tmp[200] = {0};
-  for (int i = 0; i < n && i < 15; i++) {
+  for (int i = 0; i < n; i++) {
     if (i > 0) myjson += ",";
     // {"ssid":"","rssi":}
-    int rssi = WiFi.RSSI(i);
-    sprintf(tmp, "{\"ssid\":\"%s\",\"rssi\":%d}", WiFi.SSID(i).c_str(), rssi);
+    int rssi = WiFi.RSSI(indices[i]);
+    sprintf(tmp, "{\"ssid\":\"%s\",\"rssi\":%d}", WiFi.SSID(indices[i]).c_str(), rssi);
     myjson += tmp;
   }
   myjson += ']';
