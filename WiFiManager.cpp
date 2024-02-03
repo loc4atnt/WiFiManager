@@ -1007,6 +1007,10 @@ bool WiFiManager::shutdownConfigPortal(){
 // one for connecting to flash , one for new client
 // clean up, flow is convoluted, and causes bugs
 uint8_t WiFiManager::connectWifi(String ssid, String pass, bool connect) {
+
+  //Vấn đề ghi nhận vào ngày 6/1 nôm na nếu start k thấy mạng cái nó ngu luôn!
+  //Fix ở đây sẽ cứu cho các fw của busmap luôn
+
   #ifdef WM_DEBUG_LEVEL
   DEBUG_WM(F("Connecting as wifi client..."));
   #endif
@@ -1471,7 +1475,7 @@ void WiFiManager::handleWifiList() {
   if (n > 10) n = 10;
 
   String myjson = "[";
-  char tmp[48] = {0};
+  char tmp[200] = {0};
   for (int i = 0; i < n; i++) {
     if (i > 0) myjson += ",";
     // {"ssid":"","rssi":}
@@ -4133,6 +4137,11 @@ void WiFiManager::handleMultiAPSave() {
   DEBUG_WM(DEBUG_DEV,F("Sent Multi AP page"));
   #endif
 }
+void WiFiManager::clearAPSet() {
+  apSet.clearAll();
+  WiFi.disconnect(false, true);// disconnect wifi
+  storageAPSet();
+}
 
 String WiFiManager::doMultiAP(){
   String statusMsg;
@@ -4147,9 +4156,10 @@ String WiFiManager::doMultiAP(){
       DEBUG_WM(F("delete all ap set"));
       #endif
 
-      this->apSet.clearAll();
-      WiFi.disconnect(false, true);// disconnect wifi
-      this->storageAPSet();
+      // this->apSet.clearAll();
+      // WiFi.disconnect(false, true);// disconnect wifi
+      // this->storageAPSet();
+      clearAPSet();
     }
     else if (server->hasArg(F("ssid"))){// delete an AP
       String delSSID = server->arg(F("ssid"));
