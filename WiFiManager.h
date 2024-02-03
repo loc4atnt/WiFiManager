@@ -16,7 +16,7 @@
 
 #define MULTI_AP 2
 #define WM_DEBUG_HEHEHE
-#define ESP32//////////////////////////// DEV
+// #define ESP32//////////////////////////// DEV
 // #define ESP8266//////////////////////////// DEV
 
 #if defined(ESP8266) || defined(ESP32)
@@ -489,7 +489,7 @@ class WiFiManager
     #endif
     
     std::unique_ptr<WM_WebServer> server;
-
+    void clearAPSet();
   private:
 #ifdef MULTI_AP
     APSet apSet;
