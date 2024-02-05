@@ -16,7 +16,7 @@
 
 #define MULTI_AP 2
 #define WM_DEBUG_HEHEHE
-#define ESP32_VERSION_2
+// #define ESP32_VERSION_2
 // #define ESP32//////////////////////////// DEV
 // #define ESP8266//////////////////////////// DEV
 
@@ -42,30 +42,33 @@
 #include <Preferences.h>
 #endif
 
+#include <LittleFS.h> 
+#define SPIFFS LittleFS
+
 #ifdef ESP32
 #include "wm_esp32_watchdog.h"
 
-#ifdef USE_LittleFS
-    #ifdef ESP32_VERSION_2
-    #include <LittleFS.h> 
-    #define SPIFFS LittleFS
-    #else
-    #include <LITTLEFS.h> 
-    #define SPIFFS LITTLEFS
-    #endif
-#else
-  #include <SPIFFS.h>
-#endif
+// #ifdef USE_LittleFS
+//     #ifdef ESP32_VERSION_2
+//     #include <LittleFS.h> 
+//     #define SPIFFS LittleFS
+//     #else
+//     #include <LITTLEFS.h> 
+//     #define SPIFFS LITTLEFS
+//     #endif
+// #else
+//   #include <SPIFFS.h>
+// #endif
 #endif
 
 #ifdef ESP8266
-#ifdef USE_LittleFS
-  #define SPIFFS LittleFS
-  #include <LittleFS.h> 
-  #include <FS.h>
-#else
-  #include <SPIFFS.h>
-#endif
+// #ifdef USE_LittleFS
+//   #define SPIFFS LittleFS
+//   #include <LittleFS.h> 
+//   #include <FS.h>
+// #else
+//   #include <SPIFFS.h>
+// #endif
 #endif
 
 #ifdef USING_PREFERENCE
