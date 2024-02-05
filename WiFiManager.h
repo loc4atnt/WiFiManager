@@ -45,8 +45,13 @@
 #include "wm_esp32_watchdog.h"
 
 #ifdef USE_LittleFS
-  #define SPIFFS LITTLEFS
-  #include <LITTLEFS.h> 
+    #ifdef ESP32_VERSION_2
+    #include <LittleFS.h> 
+    #define SPIFFS LittleFS
+    #else
+    #include <LITTLEFS.h> 
+    #define SPIFFS LITTLEFS
+    #endif
 #else
   #include <SPIFFS.h>
 #endif
