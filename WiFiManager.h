@@ -16,6 +16,7 @@
 
 #define MULTI_AP 2
 #define WM_DEBUG_HEHEHE
+#define ESP32_VERSION_2
 // #define ESP32//////////////////////////// DEV
 // #define ESP8266//////////////////////////// DEV
 
