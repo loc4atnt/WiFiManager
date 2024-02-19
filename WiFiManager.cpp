@@ -3761,40 +3761,43 @@ String WiFiManager::WiFi_psk(bool persistent) const {
     #define ARDUINO_EVENT_WIFI_STA_DISCONNECTED SYSTEM_EVENT_STA_DISCONNECTED
     #define ARDUINO_EVENT_WIFI_SCAN_DONE SYSTEM_EVENT_SCAN_DONE
   #endif
-    if(!_hasBegun){
-      #ifdef WM_DEBUG_LEVEL
-        DEBUG_WM(DEBUG_VERBOSE,"[ERROR] WiFiEvent, not ready");
-      #endif
-      // Serial.println(F("\n[EVENT] WiFiEvent logging (wm debug not available)"));
-      // Serial.print(F("[EVENT] ID: "));
-      // Serial.println(event);
-      return;
-    }
+  if(!_hasBegun){
     #ifdef WM_DEBUG_LEVEL
-    // DEBUG_WM(DEBUG_VERBOSE,"[EVENT]",event);
+      DEBUG_WM(DEBUG_VERBOSE,"[ERROR] WiFiEvent, not ready");
     #endif
-    if(event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED){
+    // Serial.println(F("\n[EVENT] WiFiEvent logging (wm debug not available)"));
+    // Serial.print(F("[EVENT] ID: "));
+    // Serial.println(event);
+    return;
+  }
+  #ifdef WM_DEBUG_LEVEL
+  // DEBUG_WM(DEBUG_VERBOSE,"[EVENT]",event);
+  #endif
+  if(event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED){
+  #ifdef WM_DEBUG_LEVEL
+    DEBUG_WM(DEBUG_VERBOSE,F("[EVENT] WIFI_REASON: "),info.wifi_sta_disconnected.reason);
+    #endif
+    if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE || info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL){
+      _lastconxresulttmp = 7; // hack in wrong password internally, sdk emit WIFI_REASON_AUTH_EXPIRE on some routers on auth_fail
+    } else _lastconxresulttmp = WiFi.status();
     #ifdef WM_DEBUG_LEVEL
-      DEBUG_WM(DEBUG_VERBOSE,F("[EVENT] WIFI_REASON: "),info.wifi_sta_disconnected.reason);
+    if(info.wifi_sta_disconnected.reason == WIFI_REASON_NO_AP_FOUND) DEBUG_WM(DEBUG_VERBOSE,F("[EVENT] WIFI_REASON: NO_AP_FOUND"));
+    if(info.wifi_sta_disconnected.reason == WIFI_REASON_ASSOC_FAIL){
+      if(_aggresiveReconn) _connectRetries+=4;
+      DEBUG_WM(DEBUG_VERBOSE,F("[EVENT] WIFI_REASON: AUTH FAIL"));
+    }
+    #endif
+    #ifdef esp32autoreconnect
+    #ifdef WM_DEBUG_LEVEL
+      DEBUG_WM(DEBUG_VERBOSE,F("[Event] SYSTEM_EVENT_STA_DISCONNECTED, reconnecting"));
       #endif
-      if(info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_EXPIRE || info.wifi_sta_disconnected.reason == WIFI_REASON_AUTH_FAIL){
-        _lastconxresulttmp = 7; // hack in wrong password internally, sdk emit WIFI_REASON_AUTH_EXPIRE on some routers on auth_fail
-      } else _lastconxresulttmp = WiFi.status();
-      #ifdef WM_DEBUG_LEVEL
-      if(info.wifi_sta_disconnected.reason == WIFI_REASON_NO_AP_FOUND) DEBUG_WM(DEBUG_VERBOSE,F("[EVENT] WIFI_REASON: NO_AP_FOUND"));
-      if(info.wifi_sta_disconnected.reason == WIFI_REASON_ASSOC_FAIL){
-        if(_aggresiveReconn) _connectRetries+=4;
-        DEBUG_WM(DEBUG_VERBOSE,F("[EVENT] WIFI_REASON: AUTH FAIL"));
-      }
-      #endif
-      #ifdef esp32autoreconnect
-      #ifdef WM_DEBUG_LEVEL
-        DEBUG_WM(DEBUG_VERBOSE,F("[Event] SYSTEM_EVENT_STA_DISCONNECTED, reconnecting"));
-        #endif
-        WiFi.reconnect();
-      #endif
+      WiFi.reconnect();
+    #endif
   }
   else if(event == ARDUINO_EVENT_WIFI_SCAN_DONE){
+    #ifdef WM_DEBUG_LEVEL
+      DEBUG_WM(DEBUG_VERBOSE,"[EVENT] SCAN DONE");
+    #endif
     uint16_t scans = WiFi.scanComplete();
     WiFi_scanComplete(scans);
   }
@@ -4254,19 +4257,22 @@ uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
 {
   static bool isScanning = false;
 
-  if (!configPortalActive) {
     uint8_t wfStatus = WiFi.status();
+
+  if (!configPortalActive) {
     uint8_t job = apSet.getStatus();
 
     #ifdef DEFAULT_CONNECT_TO_BEST_RSSI
     if (requestScanRSSIWifi) // chỉ scan rssi wifi trước khi kết nối vào bất kỳ wifi nào (kể cả lúc đầu)
     { // call scan wifi
+      _begin();// begin wifimanager if have not began
       WiFi_Disconnect();
       _numNetworks = 0; // reset number of networks so we must force scan
       WiFi_scanNetworks(true, true);
       isScanning = true;
       requestScanRSSIWifi = false;
     }
+
     if ((_numNetworks > 0) && isScanning) {// quet xong
       apSet.resetRSSIOfAll();
       APCredential* apRef = nullptr;
@@ -4309,7 +4315,7 @@ uint8_t WiFiManager::checkConnectForAPSet(bool isHasInternet)
       this->apSet.process(job);
     }
   }
-  return WiFi.status();
+  return wfStatus;
 }
 
 void WiFiManager::setcheckConnectForAPSetPeriod(unsigned long t){
